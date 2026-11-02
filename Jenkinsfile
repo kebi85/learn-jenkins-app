@@ -75,7 +75,7 @@ pipeline {
 
         stage('Approve Deploy') {
             steps {
-                input 'Ready to deploy?'
+                input 'Ready to deploy?',ok:'Deploy'
             }
         }
 
