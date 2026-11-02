@@ -73,6 +73,12 @@ pipeline {
             }
         }
 
+        stage('Approve Deploy') {
+            steps {
+                input 'Ready to deploy?'
+            }
+        }
+
         stage('Deploy staging') {
             agent {
                 docker {
