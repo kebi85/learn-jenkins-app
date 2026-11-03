@@ -73,37 +73,6 @@ pipeline {
             }
         }
 
-        stage('Staging E2E Tests') {
-                    agent {
-                        docker {
-                            image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
-                            reuseNode true
-                        }
-                    }
-                     environment {
-                        CI_ENVIRONMENT_URL = 'https://wondrous-nougat-1703e4.netlify.app'
-                    }       
-                    steps {
-                        sh '''
-                            echo 'E2E Prod tests'
-                            npx playwright test --reporter=html
-                        '''
-                    }
-                    post {
-                        always {
-                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Staging E2E HTML Report', reportTitles: '', useWrapperFileDirectly: true])
-                        }
-                    }
-                }
-
-        stage('Approve Deploy') {
-            steps {
-                timeout(time: 1, unit: 'HOURS') {
-                    input message: 'Ready to deploy?', ok: 'Deploy'
-                }
-            }
-        }
-
         stage('Deploy staging') {
             agent {
                 docker {
@@ -122,7 +91,38 @@ pipeline {
                 '''
                 script {
                     env.STAGING_ENV_URL = sh(script: "node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json", returnStdout: true).trim()
-                }   
+                }
+            }
+        }
+
+        stage('Staging E2E Tests') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+                    reuseNode true
+                }
+            }
+            environment {
+                CI_ENVIRONMENT_URL = "${env.STAGING_ENV_URL}"
+            }
+            steps {
+                sh '''
+                    echo 'E2E Staging tests'
+                    npx playwright test --reporter=html
+                '''
+            }
+            post {
+                always {
+                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Staging E2E HTML Report', reportTitles: '', useWrapperFileDirectly: true])
+                }
+            }
+        }
+
+        stage('Approve Deploy') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    input message: 'Ready to deploy?', ok: 'Deploy'
+                }
             }
         }
 
@@ -145,26 +145,26 @@ pipeline {
         }
 
         stage('Prod E2E Tests') {
-                    agent {
-                        docker {
-                            image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
-                            reuseNode true
-                        }
-                    }
-                     environment {
-                        CI_ENVIRONMENT_URL = "${STAGING_ENV_URL}"
-                    }       
-                    steps {
-                        sh '''
-                            echo 'E2E Prod tests'
-                            npx playwright test --reporter=html
-                        '''
-                    }
-                    post {
-                        always {
-                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Playwright E2E HTML Report', reportTitles: '', useWrapperFileDirectly: true])
-                        }
-                    }
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+                    reuseNode true
                 }
+            }
+            environment {
+                CI_ENVIRONMENT_URL = 'https://wondrous-nougat-1703e4.netlify.app'
+            }
+            steps {
+                sh '''
+                    echo 'E2E Prod tests'
+                    npx playwright test --reporter=html
+                '''
+            }
+            post {
+                always {
+                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Playwright E2E HTML Report', reportTitles: '', useWrapperFileDirectly: true])
+                }
+            }
+        }
     }
 }
