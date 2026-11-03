@@ -73,6 +73,29 @@ pipeline {
             }
         }
 
+        stage('Staging E2E Tests') {
+                    agent {
+                        docker {
+                            image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+                            reuseNode true
+                        }
+                    }
+                     environment {
+                        CI_ENVIRONMENT_URL = 'https://wondrous-nougat-1703e4.netlify.app'
+                    }       
+                    steps {
+                        sh '''
+                            echo 'E2E Prod tests'
+                            npx playwright test --reporter=html
+                        '''
+                    }
+                    post {
+                        always {
+                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Staging E2E HTML Report', reportTitles: '', useWrapperFileDirectly: true])
+                        }
+                    }
+                }
+
         stage('Approve Deploy') {
             steps {
                 timeout(time: 1, unit: 'HOURS') {
@@ -97,6 +120,9 @@ pipeline {
                     node_modules/.bin/netlify deploy --dir=build --no-build --json > deploy-output.json
                     node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json
                 '''
+                scripts {
+                    env.STAGING_ENV_URL = sh(script: "node_modules/.bin/node-jq -r '.deploy_url' deploy-output.json", returnStdout: true).trim()
+                }   
             }
         }
 
@@ -126,7 +152,7 @@ pipeline {
                         }
                     }
                      environment {
-                        CI_ENVIRONMENT_URL = 'https://wondrous-nougat-1703e4.netlify.app'
+                        CI_ENVIRONMENT_URL = "${STAGING_ENV_URL}"
                     }       
                     steps {
                         sh '''
